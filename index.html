@@ -132,7 +132,7 @@
           <h1 class="title">Fast, private, <span class="grad">peer‑to‑peer</span> sharing that just works.</h1>
           <p class="lead">EZ P2P lets you send files, chat, and connect with up to four devices at once—no central server holding your stuff. Lightweight. Clean UI. Zero fuss.</p>
           <div class="cta">
-            <a class="btn primary" href="#download">Download / Open</a>
+            <a class="btn primary" href="#download">Open in Browser</a>
             <a class="btn ghost" href="#directions">See directions</a>
           </div>
           <div class="meta"><span>Windows 10/11</span> • <span>Direct transfers</span> • <span>Local or remote</span></div>
@@ -203,19 +203,11 @@
       </div>
     </section>
 
-    <section id="download" class="container">
-      <h2>Download</h2>
-      <p class="sub">Grab the Windows installer or use the browser build. Your call.</p>
+        <section id="download" class="container">
+      <h2>Open the Browser Build</h2>
+      <p class="sub">No installer needed — run EZ P2P right in your browser.</p>
       <div class="download">
         <div class="panel">
-          <a class="dl-btn" id="winLink" href="https://example.com/downloads/EZP2P_Setup.exe">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Download for Windows
-          </a>
-          <div class="tiny" style="margin-top:10px">Version 1.0 • Last updated Aug 10, 2025</div>
-          <div class="tiny" style="margin-top:6px">Checksum (SHA‑256): <span class="kbd" id="sha">REPLACE_WITH_SHA256</span> <button class="btn ghost" style="padding:6px 10px;margin-left:8px" onclick="copySHA()">Copy</button></div>
-          <div class="tiny" style="margin-top:10px">Having trouble? Right‑click the button and choose <em>Save link as…</em></div>
-          <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:16px 0"/>
           <a class="btn ghost" id="webLink" href="REPLACE_WITH_GITHUB_RAW_URL" style="display:inline-flex;gap:10px;align-items:center;text-decoration:none">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M4 4h16v12H5.5L4 17.5V4zM8 20h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Open browser build (raw HTML)
@@ -223,8 +215,8 @@
           <div class="tiny" style="margin-top:8px">Use Chrome or Edge for best results.</div>
         </div>
         <div class="panel">
-          <strong>What about macOS/Linux?</strong>
-          <p class="tiny">If you’re testing on other platforms, you can build from source or use Wine. Native installers are planned. Reach out if you want to help test.</p>
+          <strong>Heads‑up</strong>
+          <p class="tiny">This build uses WebRTC in your browser. For now, use the manual connect flow in the directions below.</p>
         </div>
       </div>
     </section>
@@ -282,22 +274,10 @@
     </div>
   </footer>
 
-  <script>
-    // Basic OS hint for the download button
+    <script>
     (function(){
-      const p = navigator.platform.toLowerCase();
-      const l = document.getElementById('winLink');
-      if(/mac|linux/.test(p)){
-        l.textContent = 'Download for Windows (installer)';
-      }
       document.getElementById('yr').textContent = new Date().getFullYear();
     })();
-    function copySHA(){
-      const v=document.getElementById('sha').textContent.trim();
-      navigator.clipboard.writeText(v).then(()=>{
-        alert('Checksum copied to clipboard');
-      });
-    }
   </script>
 </body>
 </html>
