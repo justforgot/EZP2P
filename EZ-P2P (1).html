@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>P2P File Share + Group Chat (No Server, up to 4 peers)</title>
+<style>
+  :root { --bg:#0b0f14; --card:#121821; --muted:#8aa0b2; --accent:#61dafb; --ok:#4caf50; --warn:#ffb300; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial; background:linear-gradient(180deg,#0b0f14,#0e141c 40%, #0b0f14); color:#e7eff7; }
+  header { padding:24px 16px; text-align:center; }
+  h1 { margin:0 0 8px; font-weight:800; letter-spacing:.2px; }
+  p.sub { margin:0; color:var(--muted); }
+  main { max-width:1200px; margin:24px auto 64px; padding:0 16px; display:grid; gap:16px; grid-template-columns: 1.1fr .9fr; }
+  @media (max-width: 1100px){ main{ grid-template-columns: 1fr; } }
+  .row { display:grid; gap:16px; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); }
+  .card { background:rgba(18,24,33,.96); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:16px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  .card h2 { margin:.25rem 0 .5rem; font-size:1.05rem; letter-spacing:.2px; }
+  textarea, input[type="text"], input[type="file"] { width:100%; background:#0c121a; color:#dfeaf4; border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:10px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; resize:vertical; min-height:120px; }
+  input[type="text"] { min-height:initial; font-family: inherit; }
+  .small { font-size:.85rem; color:var(--muted); }
+  button { appearance:none; border:none; background:linear-gradient(90deg,#1f8ed6,#7bdffb); color:#001420; font-weight:700; padding:10px 14px; border-radius:12px; cursor:pointer; box-shadow: 0 6px 20px rgba(97,218,251,.25); transition: transform .06s ease; }
+  button:hover { transform: translateY(-1px); }
+  button.secondary { background:#1b2532; color:#d7e7f5; border:1px solid rgba(255,255,255,.08); box-shadow:none; }
+  .controls { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .progress { height:10px; width:100%; background:#0c121a; border-radius:99px; overflow:hidden; border:1px solid rgba(255,255,255,.06); }
+  .bar { height:100%; width:0%; background:linear-gradient(90deg,#4caf50,#99e29e); transition: width .05s linear; }
+  .list { display:grid; gap:10px; }
+  .file { display:flex; gap:10px; align-items:center; justify-content:space-between; padding:10px; border:1px solid rgba(255,255,255,.08); background:#0e1520; border-radius:12px; }
+  .pill { font-size:.75rem; padding:2px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.12); color:var(--muted); }
+  .muted { color:var(--muted); }
+  .log { height:160px; overflow:auto; background:#0c121a; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px; font-family: ui-monospace, monospace; }
+  .hint { color:var(--muted); font-size:.9rem; margin-top:6px;}
+  footer { text-align:center; color:#7c93a7; font-size:.85rem; padding:20px; }
+  .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:10px; align-items:start;}
+  .grid3 { display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; }
+  .right { text-align:right; }
+  label { display:block; margin-bottom:6px; color:#c9d8e6; font-weight:600; }
+
+  /* Chat styles */
+  .chat { display:flex; flex-direction:column; gap:10px; height:560px; }
+  .chatLog { flex:1; overflow:auto; background:#0c121a; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:12px; }
+  .bubble { max-width:78%; margin:6px 0; padding:10px 12px; border-radius:14px; line-height:1.3; word-wrap:break-word; white-space:pre-wrap; }
+  .me { background:#15324a; align-self:flex-end; border:1px solid rgba(255,255,255,.08); }
+  .peer { background:#101924; align-self:flex-start; border:1px solid rgba(255,255,255,.12); }
+  .meta { font-size:.7rem; color:#97a9bb; margin-top:4px; }
+  .chatInput { display:flex; gap:8px; }
+  .chatInput input { flex:1; }
+  .roster { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .tag { font-size:.75rem; padding:4px 8px; background:#0c121a; border:1px solid rgba(255,255,255,.1); border-radius:999px; color:#b7c7d6; }
+
+  .slot { border:1px dashed rgba(255,255,255,.12); border-radius:12px; padding:10px; }
+  .slot h3 { margin:0 0 6px; font-size:.95rem; color:#cfe3f7 }
+</style>
+</head>
+<body>
+  <header>
+    <h1>P2P File Share + Group Chat</h1>
+    <p class="sub">Up to 4 devices • WebRTC data channels • manual copy‑paste signaling • no server required</p>
+  </header>
+
+  <main>
+    <section class="card" style="grid-column:1">
+      <h2>Step 0 — Your identity</h2>
+      <div class="grid2">
+        <div>
+          <label>Display name</label>
+          <input id="displayName" type="text" placeholder="e.g., Computer A" style="min-height:initial" />
+          <div class="hint">Shown in chat and attached to shared files.</div>
+        </div>
+        <div>
+          <label>Connection status</label>
+          <div class="controls">
+            <span class="pill" id="natHelp" title="Public STUN only assists NAT discovery. No relay.">STUN: on</span>
+            <button class="secondary" id="toggleStun">Toggle STUN</button>
+          </div>
+          <div class="roster" id="roster"></div>
+          <div class="hint">Tip: Everyone can set a name; it syncs after connecting.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="grid-column:1">
+      <h2>Step 1 — Connect peers (mesh)</h2>
+      <div class="hint">Open this page on up to 4 devices. Each device can connect to the others using separate "slots" below. For each pair, do an Offer/Answer exchange. You don't need full mesh for chat to reach all peers if you keep this page open on a bridging device.</div>
+      <div class="grid3" id="slots">
+        <!-- 3 slots so you can connect to up to 3 other devices -->
+        <div class="slot" data-slot="0">
+          <h3>Peer Slot A</h3>
+          <div class="controls" style="margin-bottom:6px;">
+            <button class="offer">Create Offer</button>
+            <button class="secondary answer">Create Answer</button>
+            <button class="secondary addAnswer">Add Answer</button>
+          </div>
+          <label>Your SDP</label>
+          <textarea class="local" readonly placeholder="Click a button to generate…"></textarea>
+          <label>Peer SDP</label>
+          <textarea class="remote" placeholder="Paste peer SDP then click matching button"></textarea>
+          <div class="controls" style="margin-top:8px">
+            <span class="pill conn">new</span>
+            <span class="pill ice">ice: new</span>
+            <span class="pill dc">data: closed</span>
+          </div>
+        </div>
+        <div class="slot" data-slot="1">
+          <h3>Peer Slot B</h3>
+          <div class="controls" style="margin-bottom:6px;">
+            <button class="offer">Create Offer</button>
+            <button class="secondary answer">Create Answer</button>
+            <button class="secondary addAnswer">Add Answer</button>
+          </div>
+          <label>Your SDP</label>
+          <textarea class="local" readonly></textarea>
+          <label>Peer SDP</label>
+          <textarea class="remote"></textarea>
+          <div class="controls" style="margin-top:8px">
+            <span class="pill conn">new</span>
+            <span class="pill ice">ice: new</span>
+            <span class="pill dc">data: closed</span>
+          </div>
+        </div>
+        <div class="slot" data-slot="2">
+          <h3>Peer Slot C</h3>
+          <div class="controls" style="margin-bottom:6px;">
+            <button class="offer">Create Offer</button>
+            <button class="secondary answer">Create Answer</button>
+            <button class="secondary addAnswer">Add Answer</button>
+          </div>
+          <label>Your SDP</label>
+          <textarea class="local" readonly></textarea>
+          <label>Peer SDP</label>
+          <textarea class="remote"></textarea>
+          <div class="controls" style="margin-top:8px">
+            <span class="pill conn">new</span>
+            <span class="pill ice">ice: new</span>
+            <span class="pill dc">data: closed</span>
+          </div>
+        </div>
+      </div>
+      <div class="hint">You can reuse any free slot to connect to another device later. Maximum recommended peers: 4 total (you + 3).</div>
+    </section>
+
+    <section class="card" style="grid-column:1">
+      <h2>Step 2 — Send a file (to all connected peers)</h2>
+      <div class="controls">
+        <input type="file" id="fileInput" />
+        <button id="btnSend" disabled>Send</button>
+      </div>
+      <div class="hint">Files are broadcast to all open data channels. Metadata includes your display name.</div>
+      <div class="progress" style="margin-top:10px;"><div class="bar" id="txBar"></div></div>
+      <div class="small" id="txLabel">Idle</div>
+    </section>
+
+    <section class="card" style="grid-column:2; grid-row:1 / span 4; min-height:560px">
+      <h2>Group Chat</h2>
+      <div class="chat">
+        <div id="chatLog" class="chatLog"></div>
+        <div class="chatInput">
+          <input id="chatText" type="text" placeholder="Type a message… (Enter to send)" disabled />
+          <button id="chatSend" disabled>Send</button>
+        </div>
+        <div class="hint">Chat messages are broadcast to all connected peers. Presence syncs names automatically.</div>
+      </div>
+    </section>
+
+    <section class="card" style="grid-column:1">
+      <h2>Received files</h2>
+      <div class="list" id="recvList">
+        <div class="muted">Nothing received yet.</div>
+      </div>
+    </section>
+
+    <section class="card" style="grid-column:1">
+      <h2>Log</h2>
+      <div class="log" id="log"></div>
+    </section>
+  </main>
+
+  <footer>Note: For strictly zero external servers, toggle STUN off. Works best on the same LAN.</footer>
+
+<script>
+(() => {
+  // ===== DOM =====
+  const logEl = document.getElementById('log');
+  const txBar = document.getElementById('txBar');
+  const txLabel = document.getElementById('txLabel');
+  const recvList = document.getElementById('recvList');
+  const chatLog = document.getElementById('chatLog');
+  const chatText = document.getElementById('chatText');
+  const chatSend = document.getElementById('chatSend');
+  const fileInput = document.getElementById('fileInput');
+  const btnSend = document.getElementById('btnSend');
+  const btnToggleStun = document.getElementById('toggleStun');
+  const natHelpEl = document.getElementById('natHelp');
+  const displayNameEl = document.getElementById('displayName');
+  const rosterEl = document.getElementById('roster');
+
+  // ===== Identity =====
+  const myId = crypto.getRandomValues(new Uint32Array(1))[0].toString(16) + '-' + Math.random().toString(36).slice(2,6);
+  let myName = localStorage.getItem('p2p_name') || `Guest-${myId.slice(0,4)}`;
+  displayNameEl.value = myName;
+  displayNameEl.addEventListener('change', () => {
+    myName = displayNameEl.value.trim() || myName;
+    localStorage.setItem('p2p_name', myName);
+    broadcastPresence();
+    updateRosterTag(myId, myName, true);
+  });
+
+  // ===== Peers/Slots =====
+  const MAX_SLOTS = 3; // you + up to 3 peers = 4 total
+  let useStun = true;
+  const slotsRoot = document.getElementById('slots');
+
+  // Roster map of peerId -> {name, lastSeen}
+  const roster = new Map();
+  updateRosterTag(myId, myName, true);
+
+  const slots = [...slotsRoot.querySelectorAll('.slot')].map((slotEl, idx) => {
+    const offerBtn = slotEl.querySelector('.offer');
+    const answerBtn = slotEl.querySelector('.answer');
+    const addAnsBtn = slotEl.querySelector('.addAnswer');
+    const localBox = slotEl.querySelector('.local');
+    const remoteBox = slotEl.querySelector('.remote');
+    const connPill = slotEl.querySelector('.conn');
+    const icePill = slotEl.querySelector('.ice');
+    const dcPill = slotEl.querySelector('.dc');
+
+    let pc = null, dc = null;
+
+    function log(...args){ _log(`[Slot ${String.fromCharCode(65+idx)}]`, ...args); }
+
+    function freshPeer(){
+      if (pc) { try { pc.close(); } catch {} }
+      const iceServers = useStun ? [{urls:["stun:stun.l.google.com:19302","stun:global.stun.twilio.com:3478"]}] : [];
+      pc = new RTCPeerConnection({ iceServers, iceCandidatePoolSize:0 });
+      pc.onconnectionstatechange = () => {
+        connPill.textContent = pc.connectionState;
+        connPill.style.color = pc.connectionState === 'connected' ? 'var(--ok)' : '';
+        refreshGlobalUI();
+      };
+      pc.oniceconnectionstatechange = () => {
+        icePill.textContent = `ice: ${pc.iceConnectionState}`;
+      };
+      pc.onicecandidate = (e) => {
+        if (!e.candidate) {
+          localBox.value = btoa(JSON.stringify(pc.localDescription));
+          log('SDP ready. Share the "Your SDP" text with the peer.');
+        }
+      };
+      pc.ondatachannel = (ev) => {
+        attachDataChannel(ev.channel);
+      };
+      localBox.value = '';
+      remoteBox.value = '';
+      dcPill.textContent = 'data: closed';
+    }
+
+    function attachDataChannel(channel){
+      dc = channel;
+      dc.binaryType = 'arraybuffer';
+      dc.bufferedAmountLowThreshold = 65536;
+      dc.onopen = () => {
+        dcPill.textContent = 'data: open';
+        dcPill.style.color = 'var(--ok)';
+        refreshGlobalUI();
+        sendPresence(dc); // announce self
+        log('data channel open');
+      };
+      dc.onclose = () => { dcPill.textContent = 'data: closed'; refreshGlobalUI(); };
+      dc.onmessage = (ev) => handleInbound(ev.data, dc);
+    }
+
+    // Button handlers
+    offerBtn.addEventListener('click', async () => {
+      freshPeer();
+      const channel = pc.createDataChannel('p2p', {ordered:true});
+      attachDataChannel(channel);
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      log('Created offer, gathering ICE…');
+    });
+
+    answerBtn.addEventListener('click', async () => {
+      try{
+        const desc = JSON.parse(atob(remoteBox.value.trim()));
+        freshPeer();
+        await pc.setRemoteDescription(desc);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+      } catch(e){ alert('Invalid remote SDP (expecting offer).'); console.error(e); }
+    });
+
+    addAnsBtn.addEventListener('click', async () => {
+      try{
+        const desc = JSON.parse(atob(remoteBox.value.trim()));
+        await pc.setRemoteDescription(desc);
+      } catch(e){ alert('Invalid remote SDP (expecting answer).'); console.error(e); }
+    });
+
+    // public API for this slot
+    return {
+      get pc(){ return pc; },
+      get dc(){ return dc; },
+      open(){ return dc && dc.readyState === 'open'; },
+      send(obj){ if (this.open()) dc.send(obj); },
+      freshPeer,
+    };
+  });
+
+  // ===== Global helpers =====
+  function _log(...args){
+    const line = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
+    const at = new Date().toLocaleTimeString();
+    logEl.textContent += `[${at}] ${line}
+`;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function openChannels(){ return slots.map(s=>s.dc).filter(dc => dc && dc.readyState==='open'); }
+
+  function refreshGlobalUI(){
+    const anyOpen = openChannels().length > 0;
+    chatText.disabled = !anyOpen;
+    chatSend.disabled = !anyOpen;
+    btnSend.disabled = !anyOpen;
+  }
+
+  btnToggleStun.addEventListener('click', () => {
+    useStun = !useStun;
+    natHelpEl.textContent = `STUN: ${useStun ? 'on' : 'off'}`;
+    _log(`STUN ${useStun ? 'enabled' : 'disabled'} (applies to new connections)`);
+  });
+
+  // ===== Presence & roster =====
+  function sendPresence(dc){
+    const msg = { __meta:'presence', id: myId, name: myName, ts: Date.now() };
+    try{ dc.send(JSON.stringify(msg)); }catch{}
+  }
+  function broadcastPresence(){
+    const json = JSON.stringify({ __meta:'presence', id: myId, name: myName, ts: Date.now() });
+    for (const dc of openChannels()) try{ dc.send(json); }catch{}
+  }
+  function updateRosterTag(id, name, isSelf=false){
+    roster.set(id, {name, lastSeen: Date.now()});
+    // rebuild tags
+    rosterEl.innerHTML = '';
+    for (const [pid, info] of roster.entries()){
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = `${info.name}${pid===myId?' (you)':''}`;
+      rosterEl.appendChild(tag);
+    }
+  }
+
+  // ===== Chat =====
+  function addChatBubble(who, name, text, ts=Date.now()){
+    const wrap = document.createElement('div');
+    wrap.className = `bubble ${who === 'me' ? 'me' : 'peer'}`;
+    wrap.innerHTML = `<b>${escapeHtml(name)}</b><br>${escapeHtml(text)}<div class="meta">${new Date(ts).toLocaleTimeString()}</div>`;
+    chatLog.appendChild(wrap);
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }
+  function sendChat(text){
+    if (!text.trim()) return;
+    const msg = { __meta:'chat', id: myId, name: myName, text, ts: Date.now() };
+    const json = JSON.stringify(msg);
+    for (const dc of openChannels()) { try{ dc.send(json); }catch{} }
+    addChatBubble('me', myName, text, msg.ts);
+  }
+  chatSend.addEventListener('click', () => { sendChat(chatText.value); chatText.value=''; });
+  chatText.addEventListener('keydown', (e) => {
+    if (e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(chatText.value); chatText.value=''; }
+  });
+
+  // ===== File transfer (broadcast) =====
+  let receiveBuffer = [];
+  let receivedBytes = 0;
+  let expectedSize = 0;
+  let expectedName = 'file.bin';
+  let expectedType = 'application/octet-stream';
+  let expectedFrom = 'Unknown';
+
+  function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+
+  async function sendFile(file){
+    const dcs = openChannels();
+    if (dcs.length === 0){ alert('No peers connected.'); return; }
+    // Send metadata first
+    const meta = JSON.stringify({ __meta:'file', name:file.name, size:file.size, type:file.type, from:{id:myId,name:myName} });
+    for (const dc of dcs) { try{ dc.send(meta); }catch{} }
+
+    const chunkSize = 16*1024; // 16 KiB
+    let offset = 0; let lastUpdate = 0;
+    txLabel.textContent = `Sending ${file.name}…`;
+
+    while (offset < file.size){
+      const slice = await file.slice(offset, offset + chunkSize).arrayBuffer();
+      // Backpressure: naive fanout; if any channel buffers too high, wait for it
+      let needWait = false;
+      for (const dc of dcs){ try{ dc.send(slice); if (dc.bufferedAmount > 8*1024*1024) needWait = true; }catch{} }
+      if (needWait){ await Promise.race(dcs.map(dc => new Promise(r => dc.addEventListener('bufferedamountlow', r, {once:true})))); }
+      offset += slice.byteLength;
+      const now = performance.now();
+      if (now - lastUpdate > 50 || offset === file.size){
+        const pct = Math.round((offset / file.size) * 100);
+        txBar.style.width = pct + '%';
+        txLabel.textContent = `Sending ${file.name}… ${pct}%`;
+        lastUpdate = now;
+      }
+    }
+    txLabel.textContent = `Sent ${file.name} (${file.size.toLocaleString()} bytes) to ${dcs.length} peer(s)`;
+  }
+
+  btnSend.addEventListener('click', () => {
+    const f = fileInput.files && fileInput.files[0];
+    if (!f) { alert('Pick a file first.'); return; }
+    sendFile(f);
+  });
+
+  function addReceivedItem(name, size, linkEl, fromName){
+    if (recvList.firstElementChild && recvList.firstElementChild.classList.contains('muted')){
+      recvList.innerHTML = '';
+    }
+    const row = document.createElement('div');
+    row.className = 'file';
+    const left = document.createElement('div');
+    left.innerHTML = `<b>${escapeHtml(name)}</b><div class="small muted">${(size||0).toLocaleString()} bytes • from ${escapeHtml(fromName||'Unknown')}</div>`;
+    const right = document.createElement('div');
+    right.appendChild(linkEl);
+    row.appendChild(left); row.appendChild(right);
+    recvList.appendChild(row);
+  }
+
+  let rxProgressRow = null;
+  function addOrUpdateRxProgress(pct, reset=false){
+    if (reset){ if (rxProgressRow) rxProgressRow.remove(); rxProgressRow=null; return; }
+    if (!rxProgressRow){
+      rxProgressRow = document.createElement('div');
+      rxProgressRow.className = 'file';
+      rxProgressRow.innerHTML = `<div><b>Receiving…</b><div class="small muted" id="rxPct">0%</div></div>
+      <div style="min-width:200px"><div class="progress"><div class="bar" id="rxBar" style="width:0%"></div></div></div>`;
+      recvList.appendChild(rxProgressRow);
+    }
+    const bar = rxProgressRow.querySelector('#rxBar');
+    const pctEl = rxProgressRow.querySelector('#rxPct');
+    if (bar) bar.style.width = pct + '%';
+    if (pctEl) pctEl.textContent = pct + '%';
+  }
+
+  // ===== Inbound message handler =====
+  function handleInbound(data, dc){
+    if (typeof data === 'string'){
+      try{
+        const msg = JSON.parse(data);
+        if (msg.__meta === 'presence'){
+          updateRosterTag(msg.id, msg.name);
+          // optionally echo our presence back to new peer
+          try{ dc.send(JSON.stringify({__meta:'presence', id:myId, name:myName, ts: Date.now()})); }catch{}
+          return;
+        }
+        if (msg.__meta === 'chat'){
+          updateRosterTag(msg.id, msg.name);
+          addChatBubble('peer', msg.name||'Peer', msg.text||'', msg.ts);
+          return;
+        }
+        if (msg.__meta === 'file'){
+          expectedName = msg.name; expectedType = msg.type || 'application/octet-stream';
+          expectedSize = msg.size >>> 0; expectedFrom = (msg.from && msg.from.name) || 'Peer';
+          receiveBuffer = []; receivedBytes = 0;
+          _log(`Incoming file from ${expectedFrom}: ${expectedName} (${msg.size.toLocaleString()} bytes)`);
+          return;
+        }
+      }catch{
+        // treat as plain chat line
+        addChatBubble('peer', 'Peer', String(data));
+      }
+      return;
+    }
+    // binary chunk
+    receiveBuffer.push(data);
+    receivedBytes += data.byteLength;
+    const pct = expectedSize ? Math.min(100, Math.round((receivedBytes/expectedSize)*100)) : 0;
+    addOrUpdateRxProgress(pct);
+
+    if (expectedSize && receivedBytes >= expectedSize){
+      const blob = new Blob(receiveBuffer, { type: expectedType });
+      receiveBuffer = [];
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = expectedName || 'file.bin'; a.textContent = 'Download';
+      addReceivedItem(expectedName, receivedBytes, a, expectedFrom);
+      addOrUpdateRxProgress(0, true);
+    }
+  }
+
+  // ===== Init =====
+  // Build slots initially
+  slots.forEach(s => s.freshPeer());
+
+  // Backpressure info
+  _log('Backpressure support:', 'bufferedAmountLowThreshold' in RTCDataChannel.prototype ? 'yes' : 'limited');
+})();
+</script>
+</body>
+</html>
