@@ -1,505 +1,303 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>P2P File Share + Group Chat (No Server, up to 4 peers)</title>
-<style>
-  :root { --bg:#0b0f14; --card:#121821; --muted:#8aa0b2; --accent:#61dafb; --ok:#4caf50; --warn:#ffb300; }
-  * { box-sizing: border-box; }
-  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial; background:linear-gradient(180deg,#0b0f14,#0e141c 40%, #0b0f14); color:#e7eff7; }
-  header { padding:24px 16px; text-align:center; }
-  h1 { margin:0 0 8px; font-weight:800; letter-spacing:.2px; }
-  p.sub { margin:0; color:var(--muted); }
-  main { max-width:1200px; margin:24px auto 64px; padding:0 16px; display:grid; gap:16px; grid-template-columns: 1.1fr .9fr; }
-  @media (max-width: 1100px){ main{ grid-template-columns: 1fr; } }
-  .row { display:grid; gap:16px; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); }
-  .card { background:rgba(18,24,33,.96); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:16px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
-  .card h2 { margin:.25rem 0 .5rem; font-size:1.05rem; letter-spacing:.2px; }
-  textarea, input[type="text"], input[type="file"] { width:100%; background:#0c121a; color:#dfeaf4; border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:10px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; resize:vertical; min-height:120px; }
-  input[type="text"] { min-height:initial; font-family: inherit; }
-  .small { font-size:.85rem; color:var(--muted); }
-  button { appearance:none; border:none; background:linear-gradient(90deg,#1f8ed6,#7bdffb); color:#001420; font-weight:700; padding:10px 14px; border-radius:12px; cursor:pointer; box-shadow: 0 6px 20px rgba(97,218,251,.25); transition: transform .06s ease; }
-  button:hover { transform: translateY(-1px); }
-  button.secondary { background:#1b2532; color:#d7e7f5; border:1px solid rgba(255,255,255,.08); box-shadow:none; }
-  .controls { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .progress { height:10px; width:100%; background:#0c121a; border-radius:99px; overflow:hidden; border:1px solid rgba(255,255,255,.06); }
-  .bar { height:100%; width:0%; background:linear-gradient(90deg,#4caf50,#99e29e); transition: width .05s linear; }
-  .list { display:grid; gap:10px; }
-  .file { display:flex; gap:10px; align-items:center; justify-content:space-between; padding:10px; border:1px solid rgba(255,255,255,.08); background:#0e1520; border-radius:12px; }
-  .pill { font-size:.75rem; padding:2px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.12); color:var(--muted); }
-  .muted { color:var(--muted); }
-  .log { height:160px; overflow:auto; background:#0c121a; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px; font-family: ui-monospace, monospace; }
-  .hint { color:var(--muted); font-size:.9rem; margin-top:6px;}
-  footer { text-align:center; color:#7c93a7; font-size:.85rem; padding:20px; }
-  .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:10px; align-items:start;}
-  .grid3 { display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; }
-  .right { text-align:right; }
-  label { display:block; margin-bottom:6px; color:#c9d8e6; font-weight:600; }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EZ P2P — Fast, Private, Direct Sharing</title>
+  <meta name="description" content="EZ P2P is a lightweight app for fast, private, peer‑to‑peer file sharing and chat. No central server needed." />
+  <style>
+    :root{
+      --bg:#0b1020;           /* base background */
+      --panel:#0f152b;        /* card background */
+      --muted:#9aa4bf;        /* subdued text */
+      --text:#e7ecff;         /* main text */
+      --accent:#7c3aed;       /* purple */
+      --accent-2:#06b6d4;     /* cyan */
+      --ring: rgba(124,58,237,.35);
+      --shadow: 0 10px 30px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.25);
+      --radius: 18px;
+      --radius-sm: 14px;
+      --radius-lg: 26px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background:
+        radial-gradient(60% 60% at 10% 10%, rgba(124,58,237,.12), transparent 40%),
+        radial-gradient(40% 60% at 90% 20%, rgba(6,182,212,.12), transparent 45%),
+        linear-gradient(180deg, #0b1020 0%, #0a0f1d 100%);
+      background-attachment: fixed;
+      line-height:1.5;
+    }
 
-  /* Chat styles */
-  .chat { display:flex; flex-direction:column; gap:10px; height:560px; }
-  .chatLog { flex:1; overflow:auto; background:#0c121a; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:12px; }
-  .bubble { max-width:78%; margin:6px 0; padding:10px 12px; border-radius:14px; line-height:1.3; word-wrap:break-word; white-space:pre-wrap; }
-  .me { background:#15324a; align-self:flex-end; border:1px solid rgba(255,255,255,.08); }
-  .peer { background:#101924; align-self:flex-start; border:1px solid rgba(255,255,255,.12); }
-  .meta { font-size:.7rem; color:#97a9bb; margin-top:4px; }
-  .chatInput { display:flex; gap:8px; }
-  .chatInput input { flex:1; }
-  .roster { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-  .tag { font-size:.75rem; padding:4px 8px; background:#0c121a; border:1px solid rgba(255,255,255,.1); border-radius:999px; color:#b7c7d6; }
+    /* --- Layout --- */
+    .container{max-width:1100px;margin:0 auto;padding:24px}
+    header.nav{position:sticky;top:0;z-index:50;backdrop-filter:saturate(160%) blur(10px);background:rgba(11,16,32,.6);border-bottom:1px solid rgba(255,255,255,.06)}
+    .nav-inner{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px}
+    a.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--text)}
+    .badge{font-size:12px;padding:4px 8px;border-radius:999px;background:rgba(124,58,237,.18);border:1px solid rgba(124,58,237,.35)}
+    nav a{color:var(--muted);text-decoration:none;margin-left:18px}
+    nav a:hover{color:var(--text)}
 
-  .slot { border:1px dashed rgba(255,255,255,.12); border-radius:12px; padding:10px; }
-  .slot h3 { margin:0 0 6px; font-size:.95rem; color:#cfe3f7 }
-</style>
+    /* --- Hero --- */
+    .hero{padding:64px 24px}
+    .hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:28px;align-items:center}
+    .title{font-size:48px;line-height:1.1;margin:0}
+    .title .grad{background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+    .lead{color:#c8d1f0;font-size:18px;margin:14px 0 24px}
+    .cta{display:flex;gap:12px;flex-wrap:wrap}
+    .btn{appearance:none;border:none;cursor:pointer;border-radius:999px;padding:14px 20px;font-weight:600}
+    .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;box-shadow:0 8px 30px rgba(124,58,237,.35)}
+    .btn.ghost{background:rgba(255,255,255,.06);color:var(--text);border:1px solid rgba(255,255,255,.12)}
+    .meta{display:flex;gap:14px;align-items:center;color:var(--muted);font-size:14px;margin-top:12px}
+
+    .device{background:linear-gradient(180deg,#111834,#0c132a);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:18px; height:360px; position:relative; overflow:hidden}
+    .device .bar{display:flex;gap:8px;margin-bottom:14px}
+    .dot{width:10px;height:10px;border-radius:999px;background:#2e3a66;border:1px solid rgba(255,255,255,.12)}
+    .screen{position:absolute; inset:60px 18px 18px; border-radius:16px; background:linear-gradient(180deg,#0b1125,#081022);border:1px solid rgba(255,255,255,.06); padding:16px; display:grid; grid-template-columns:1fr 1fr; gap:14px;color:#d8e1ff; font-size:14px}
+    .card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px}
+    .chip{display:inline-flex;gap:8px;align-items:center;font-size:12px;padding:6px 10px;border-radius:999px;background:rgba(124,58,237,.18);border:1px solid rgba(124,58,237,.3)}
+
+    /* --- Sections --- */
+    section{padding:48px 24px}
+    h2{font-size:28px;margin:0 0 8px}
+    p.sub{color:var(--muted);margin:0 0 24px}
+
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    .feature{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius);padding:18px}
+    .feature h3{margin:0 0 6px;font-size:18px}
+    .feature p{margin:0;color:#cfd6f7}
+
+    .how{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    .step{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius);padding:18px}
+    .step .num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:rgba(6,182,212,.18);border:1px solid rgba(6,182,212,.35);font-weight:700;margin-bottom:8px}
+
+    .download{display:grid;grid-template-columns:2fr 1fr;gap:18px;align-items:start}
+    .panel{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:18px}
+    .dl-btn{display:inline-flex;align-items:center;gap:10px;padding:14px 18px;border-radius:12px;border:1px solid rgba(124,58,237,.4);background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;font-weight:700;text-decoration:none;box-shadow:0 10px 28px var(--ring)}
+    .tiny{font-size:12px;color:var(--muted)}
+    .kbd{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:6px;padding:2px 6px;font-size:12px}
+
+    /* --- Footer --- */
+    footer{padding:32px 24px;color:var(--muted);border-top:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.25)}
+
+    /* --- Responsive --- */
+    @media (max-width: 980px){
+      .hero-grid, .download{grid-template-columns:1fr}
+      .grid{grid-template-columns:1fr 1fr}
+      .how{grid-template-columns:1fr}
+      .title{font-size:38px}
+    }
+    @media (max-width: 640px){
+      .grid{grid-template-columns:1fr}
+      .title{font-size:32px}
+    }
+  </style>
 </head>
 <body>
-  <header>
-    <h1>P2P File Share + Group Chat</h1>
-    <p class="sub">Up to 4 devices • WebRTC data channels • manual copy‑paste signaling • no server required</p>
+  <header class="nav">
+    <div class="nav-inner container">
+      <a href="#top" class="brand" aria-label="EZ P2P Home">
+        <!-- Simple inline SVG logo -->
+        <svg width="36" height="36" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="g" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#7c3aed"/>
+              <stop offset="1" stop-color="#06b6d4"/>
+            </linearGradient>
+          </defs>
+          <rect x="4" y="4" width="40" height="40" rx="10" stroke="url(#g)" stroke-width="2" fill="rgba(124,58,237,.08)"/>
+          <path d="M14 24h20M24 14v20" stroke="url(#g)" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <strong>EZ P2P</strong>
+        <span class="badge">v1.0</span>
+      </a>
+      <nav>
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#download">Download</a>
+        <a href="#directions">Directions</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+    </div>
   </header>
 
-  <main>
-    <section class="card" style="grid-column:1">
-      <h2>Step 0 — Your identity</h2>
-      <div class="grid2">
+  <main id="top">
+    <section class="hero container">
+      <div class="hero-grid">
         <div>
-          <label>Display name</label>
-          <input id="displayName" type="text" placeholder="e.g., Computer A" style="min-height:initial" />
-          <div class="hint">Shown in chat and attached to shared files.</div>
+          <h1 class="title">Fast, private, <span class="grad">peer‑to‑peer</span> sharing that just works.</h1>
+          <p class="lead">EZ P2P lets you send files, chat, and connect with up to four devices at once—no central server holding your stuff. Lightweight. Clean UI. Zero fuss.</p>
+          <div class="cta">
+            <a class="btn primary" href="#download">Download / Open</a>
+            <a class="btn ghost" href="#directions">See directions</a>
+          </div>
+          <div class="meta"><span>Windows 10/11</span> • <span>Direct transfers</span> • <span>Local or remote</span></div>
         </div>
         <div>
-          <label>Connection status</label>
-          <div class="controls">
-            <span class="pill" id="natHelp" title="Public STUN only assists NAT discovery. No relay.">STUN: on</span>
-            <button class="secondary" id="toggleStun">Toggle STUN</button>
+          <div class="device" role="img" aria-label="EZ P2P window mockup">
+            <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+            <div class="screen">
+              <div class="card">
+                <div class="chip">Peers <span class="kbd">4 online</span></div>
+                <ul>
+                  <li>Blake-PC <span class="tiny">(LAN)</span></li>
+                  <li>Tablet <span class="tiny">(Wi‑Fi)</span></li>
+                  <li>Wyatt-Laptop <span class="tiny">(Remote)</span></li>
+                </ul>
+              </div>
+              <div class="card">
+                <div class="chip">Transfers</div>
+                <p class="tiny">Drag & drop files here to send</p>
+                <div class="card" style="margin-top:10px">
+                  <div class="tiny">holiday.mp4 • 812 MB</div>
+                  <div class="tiny">Sending… 68%</div>
+                </div>
+              </div>
+              <div class="card" style="grid-column:1/3">
+                <div class="chip">Room Chat</div>
+                <p class="tiny">You: Ready to send?</p>
+                <p class="tiny">Wyatt: Send it 🎯</p>
+              </div>
+            </div>
           </div>
-          <div class="roster" id="roster"></div>
-          <div class="hint">Tip: Everyone can set a name; it syncs after connecting.</div>
         </div>
       </div>
     </section>
 
-    <section class="card" style="grid-column:1">
-      <h2>Step 1 — Connect peers (mesh)</h2>
-      <div class="hint">Open this page on up to 4 devices. Each device can connect to the others using separate "slots" below. For each pair, do an Offer/Answer exchange. You don't need full mesh for chat to reach all peers if you keep this page open on a bridging device.</div>
-      <div class="grid3" id="slots">
-        <!-- 3 slots so you can connect to up to 3 other devices -->
-        <div class="slot" data-slot="0">
-          <h3>Peer Slot A</h3>
-          <div class="controls" style="margin-bottom:6px;">
-            <button class="offer">Create Offer</button>
-            <button class="secondary answer">Create Answer</button>
-            <button class="secondary addAnswer">Add Answer</button>
-          </div>
-          <label>Your SDP</label>
-          <textarea class="local" readonly placeholder="Click a button to generate…"></textarea>
-          <label>Peer SDP</label>
-          <textarea class="remote" placeholder="Paste peer SDP then click matching button"></textarea>
-          <div class="controls" style="margin-top:8px">
-            <span class="pill conn">new</span>
-            <span class="pill ice">ice: new</span>
-            <span class="pill dc">data: closed</span>
-          </div>
-        </div>
-        <div class="slot" data-slot="1">
-          <h3>Peer Slot B</h3>
-          <div class="controls" style="margin-bottom:6px;">
-            <button class="offer">Create Offer</button>
-            <button class="secondary answer">Create Answer</button>
-            <button class="secondary addAnswer">Add Answer</button>
-          </div>
-          <label>Your SDP</label>
-          <textarea class="local" readonly></textarea>
-          <label>Peer SDP</label>
-          <textarea class="remote"></textarea>
-          <div class="controls" style="margin-top:8px">
-            <span class="pill conn">new</span>
-            <span class="pill ice">ice: new</span>
-            <span class="pill dc">data: closed</span>
-          </div>
-        </div>
-        <div class="slot" data-slot="2">
-          <h3>Peer Slot C</h3>
-          <div class="controls" style="margin-bottom:6px;">
-            <button class="offer">Create Offer</button>
-            <button class="secondary answer">Create Answer</button>
-            <button class="secondary addAnswer">Add Answer</button>
-          </div>
-          <label>Your SDP</label>
-          <textarea class="local" readonly></textarea>
-          <label>Peer SDP</label>
-          <textarea class="remote"></textarea>
-          <div class="controls" style="margin-top:8px">
-            <span class="pill conn">new</span>
-            <span class="pill ice">ice: new</span>
-            <span class="pill dc">data: closed</span>
-          </div>
-        </div>
-      </div>
-      <div class="hint">You can reuse any free slot to connect to another device later. Maximum recommended peers: 4 total (you + 3).</div>
-    </section>
-
-    <section class="card" style="grid-column:1">
-      <h2>Step 2 — Send a file (to all connected peers)</h2>
-      <div class="controls">
-        <input type="file" id="fileInput" />
-        <button id="btnSend" disabled>Send</button>
-      </div>
-      <div class="hint">Files are broadcast to all open data channels. Metadata includes your display name.</div>
-      <div class="progress" style="margin-top:10px;"><div class="bar" id="txBar"></div></div>
-      <div class="small" id="txLabel">Idle</div>
-    </section>
-
-    <section class="card" style="grid-column:2; grid-row:1 / span 4; min-height:560px">
-      <h2>Group Chat</h2>
-      <div class="chat">
-        <div id="chatLog" class="chatLog"></div>
-        <div class="chatInput">
-          <input id="chatText" type="text" placeholder="Type a message… (Enter to send)" disabled />
-          <button id="chatSend" disabled>Send</button>
-        </div>
-        <div class="hint">Chat messages are broadcast to all connected peers. Presence syncs names automatically.</div>
+    <section id="features" class="container">
+      <h2>Features</h2>
+      <p class="sub">Everything you need to move files between devices quickly with a friendly interface.</p>
+      <div class="grid">
+        <div class="feature"><h3>Direct & Private</h3><p>Connect device‑to‑device so your files aren’t parked on someone else’s server.</p></div>
+        <div class="feature"><h3>Simple Rooms</h3><p>Create or join a room to see peers instantly and keep things organized.</p></div>
+        <div class="feature"><h3>Drag & Drop</h3><p>Drop files to start a transfer. You’ll see progress, speed, and completion.</p></div>
+        <div class="feature"><h3>Chat Built‑In</h3><p>Coordinate sends and confirm deliveries without switching apps.</p></div>
+        <div class="feature"><h3>LAN or Internet</h3><p>Works great at home, at school, or between friends wherever they are.</p></div>
+        <div class="feature"><h3>Up to 4 Devices</h3><p>Connect with up to four devices at once for easy group sharing.</p></div>
       </div>
     </section>
 
-    <section class="card" style="grid-column:1">
-      <h2>Received files</h2>
-      <div class="list" id="recvList">
-        <div class="muted">Nothing received yet.</div>
+    <section id="how" class="container">
+      <h2>How it works</h2>
+      <p class="sub">EZ P2P makes a direct connection between devices for file transfers and chat—no central storage.</p>
+      <div class="how">
+        <div class="step">
+          <div class="num">1</div>
+          <strong>Discover peers</strong>
+          <p class="tiny">On LAN, devices announce themselves. Remotely, share your room name with a friend.</p>
+        </div>
+        <div class="step">
+          <div class="num">2</div>
+          <strong>Connect securely</strong>
+          <p class="tiny">Devices connect directly. Transfers stream peer‑to‑peer for speed and privacy.</p>
+        </div>
+        <div class="step">
+          <div class="num">3</div>
+          <strong>Send anything</strong>
+          <p class="tiny">Drag & drop files or folders. Keep chatting while transfers run.</p>
+        </div>
       </div>
     </section>
 
-    <section class="card" style="grid-column:1">
-      <h2>Log</h2>
-      <div class="log" id="log"></div>
+    <section id="download" class="container">
+      <h2>Download</h2>
+      <p class="sub">Grab the Windows installer or use the browser build. Your call.</p>
+      <div class="download">
+        <div class="panel">
+          <a class="dl-btn" id="winLink" href="https://example.com/downloads/EZP2P_Setup.exe">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Download for Windows
+          </a>
+          <div class="tiny" style="margin-top:10px">Version 1.0 • Last updated Aug 10, 2025</div>
+          <div class="tiny" style="margin-top:6px">Checksum (SHA‑256): <span class="kbd" id="sha">REPLACE_WITH_SHA256</span> <button class="btn ghost" style="padding:6px 10px;margin-left:8px" onclick="copySHA()">Copy</button></div>
+          <div class="tiny" style="margin-top:10px">Having trouble? Right‑click the button and choose <em>Save link as…</em></div>
+          <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:16px 0"/>
+          <a class="btn ghost" id="webLink" href="REPLACE_WITH_GITHUB_RAW_URL" style="display:inline-flex;gap:10px;align-items:center;text-decoration:none">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M4 4h16v12H5.5L4 17.5V4zM8 20h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Open browser build (raw HTML)
+          </a>
+          <div class="tiny" style="margin-top:8px">Use Chrome or Edge for best results.</div>
+        </div>
+        <div class="panel">
+          <strong>What about macOS/Linux?</strong>
+          <p class="tiny">If you’re testing on other platforms, you can build from source or use Wine. Native installers are planned. Reach out if you want to help test.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="directions" class="container">
+      <h2>Directions</h2>
+      <p class="sub">Use the desktop app, or follow these steps for the browser build (manual connect). These match the labels in your screenshot. We removed the rename step as you asked.</p>
+      <div class="grid">
+        <div class="feature">
+          <h3>Browser quick start (manual connect)</h3>
+          <ol class="tiny">
+            <li>Download the raw EZ‑P2P file from GitHub and open it in a Chromium‑based browser (<strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> recommended).</li>
+            <li>On <strong>Device A</strong>, click <span class="kbd">Create Offer</span> in <em>Peer slot 1</em>. Copy the long string that appears.</li>
+            <li>Send that string to <strong>Device B</strong> (the device you want to connect to).</li>
+            <li>On <strong>Device B</strong>, paste the string into <span class="kbd">Peer SDP</span> in <em>peer slot 1</em> and click <span class="kbd">Create Answer</span>.</li>
+            <li>Copy the new string that shows up in <span class="kbd">Your SDP</span> on Device B and send it back to Device A.</li>
+            <li>On <strong>Device A</strong>, paste that string into <span class="kbd">Peer SDP</span> and click <span class="kbd">Add Answer</span>.</li>
+            <li>All set! Use chat and start sending files. When the peer clicks <strong>Download</strong>, they receive the raw file (no compression/processing).</li>
+          </ol>
+        </div>
+        <div class="feature">
+          <h3>Tips</h3>
+          <ul class="tiny">
+            <li>If devices don’t connect, double‑check you’re on Chrome or Edge. <strong>Opera GX is known not to work</strong> with this build.</li>
+            <li>Connect only with people you trust. Be careful who you share connection strings with.</li>
+            <li>You can connect up to four devices at once and use the built‑in chat to coordinate transfers.</li>
+          </ul>
+        </div>
+        <div class="feature">
+          <h3>Windows app</h3>
+          <ol class="tiny">
+            <li>Install the Windows version above.</li>
+            <li>Pick a display name and join/create a room.</li>
+            <li>Drag files in to send; use chat to confirm delivery.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="container">
+      <h2>FAQ</h2>
+      <div class="panel">
+        <p><strong>Do my files go through a central server?</strong><br /><span class="tiny">Transfers are designed to be direct between peers. Your files are not stored on a central server.</span></p>
+        <p><strong>Does EZ P2P work over the internet?</strong><br /><span class="tiny">Yes. You can share with friends on the same network or remotely by joining the same room (desktop) or exchanging SDP strings (browser build).</span></p>
+        <p><strong>Is there a size limit?</strong><br /><span class="tiny">You can send big files—the practical limits are disk space and your network connection.</span></p>
+        <p><strong>Safety note</strong><br /><span class="tiny">Don’t connect to people you don’t trust. Whatever you do with this program, be careful who you connect to.</span></p>
+      </div>
     </section>
   </main>
 
-  <footer>Note: For strictly zero external servers, toggle STUN off. Works best on the same LAN.</footer>
+  <footer class="container">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div>© <span id="yr"></span> EZ P2P</div>
+      <div class="tiny">Questions? <a style="color:#cfe8ff" href="mailto:support@ezp2p.app">support@ezp2p.app</a></div>
+    </div>
+  </footer>
 
-<script>
-(() => {
-  // ===== DOM =====
-  const logEl = document.getElementById('log');
-  const txBar = document.getElementById('txBar');
-  const txLabel = document.getElementById('txLabel');
-  const recvList = document.getElementById('recvList');
-  const chatLog = document.getElementById('chatLog');
-  const chatText = document.getElementById('chatText');
-  const chatSend = document.getElementById('chatSend');
-  const fileInput = document.getElementById('fileInput');
-  const btnSend = document.getElementById('btnSend');
-  const btnToggleStun = document.getElementById('toggleStun');
-  const natHelpEl = document.getElementById('natHelp');
-  const displayNameEl = document.getElementById('displayName');
-  const rosterEl = document.getElementById('roster');
-
-  // ===== Identity =====
-  const myId = crypto.getRandomValues(new Uint32Array(1))[0].toString(16) + '-' + Math.random().toString(36).slice(2,6);
-  let myName = localStorage.getItem('p2p_name') || `Guest-${myId.slice(0,4)}`;
-  displayNameEl.value = myName;
-  displayNameEl.addEventListener('change', () => {
-    myName = displayNameEl.value.trim() || myName;
-    localStorage.setItem('p2p_name', myName);
-    broadcastPresence();
-    updateRosterTag(myId, myName, true);
-  });
-
-  // ===== Peers/Slots =====
-  const MAX_SLOTS = 3; // you + up to 3 peers = 4 total
-  let useStun = true;
-  const slotsRoot = document.getElementById('slots');
-
-  // Roster map of peerId -> {name, lastSeen}
-  const roster = new Map();
-  updateRosterTag(myId, myName, true);
-
-  const slots = [...slotsRoot.querySelectorAll('.slot')].map((slotEl, idx) => {
-    const offerBtn = slotEl.querySelector('.offer');
-    const answerBtn = slotEl.querySelector('.answer');
-    const addAnsBtn = slotEl.querySelector('.addAnswer');
-    const localBox = slotEl.querySelector('.local');
-    const remoteBox = slotEl.querySelector('.remote');
-    const connPill = slotEl.querySelector('.conn');
-    const icePill = slotEl.querySelector('.ice');
-    const dcPill = slotEl.querySelector('.dc');
-
-    let pc = null, dc = null;
-
-    function log(...args){ _log(`[Slot ${String.fromCharCode(65+idx)}]`, ...args); }
-
-    function freshPeer(){
-      if (pc) { try { pc.close(); } catch {} }
-      const iceServers = useStun ? [{urls:["stun:stun.l.google.com:19302","stun:global.stun.twilio.com:3478"]}] : [];
-      pc = new RTCPeerConnection({ iceServers, iceCandidatePoolSize:0 });
-      pc.onconnectionstatechange = () => {
-        connPill.textContent = pc.connectionState;
-        connPill.style.color = pc.connectionState === 'connected' ? 'var(--ok)' : '';
-        refreshGlobalUI();
-      };
-      pc.oniceconnectionstatechange = () => {
-        icePill.textContent = `ice: ${pc.iceConnectionState}`;
-      };
-      pc.onicecandidate = (e) => {
-        if (!e.candidate) {
-          localBox.value = btoa(JSON.stringify(pc.localDescription));
-          log('SDP ready. Share the "Your SDP" text with the peer.');
-        }
-      };
-      pc.ondatachannel = (ev) => {
-        attachDataChannel(ev.channel);
-      };
-      localBox.value = '';
-      remoteBox.value = '';
-      dcPill.textContent = 'data: closed';
-    }
-
-    function attachDataChannel(channel){
-      dc = channel;
-      dc.binaryType = 'arraybuffer';
-      dc.bufferedAmountLowThreshold = 65536;
-      dc.onopen = () => {
-        dcPill.textContent = 'data: open';
-        dcPill.style.color = 'var(--ok)';
-        refreshGlobalUI();
-        sendPresence(dc); // announce self
-        log('data channel open');
-      };
-      dc.onclose = () => { dcPill.textContent = 'data: closed'; refreshGlobalUI(); };
-      dc.onmessage = (ev) => handleInbound(ev.data, dc);
-    }
-
-    // Button handlers
-    offerBtn.addEventListener('click', async () => {
-      freshPeer();
-      const channel = pc.createDataChannel('p2p', {ordered:true});
-      attachDataChannel(channel);
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      log('Created offer, gathering ICE…');
-    });
-
-    answerBtn.addEventListener('click', async () => {
-      try{
-        const desc = JSON.parse(atob(remoteBox.value.trim()));
-        freshPeer();
-        await pc.setRemoteDescription(desc);
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-      } catch(e){ alert('Invalid remote SDP (expecting offer).'); console.error(e); }
-    });
-
-    addAnsBtn.addEventListener('click', async () => {
-      try{
-        const desc = JSON.parse(atob(remoteBox.value.trim()));
-        await pc.setRemoteDescription(desc);
-      } catch(e){ alert('Invalid remote SDP (expecting answer).'); console.error(e); }
-    });
-
-    // public API for this slot
-    return {
-      get pc(){ return pc; },
-      get dc(){ return dc; },
-      open(){ return dc && dc.readyState === 'open'; },
-      send(obj){ if (this.open()) dc.send(obj); },
-      freshPeer,
-    };
-  });
-
-  // ===== Global helpers =====
-  function _log(...args){
-    const line = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
-    const at = new Date().toLocaleTimeString();
-    logEl.textContent += `[${at}] ${line}
-`;
-    logEl.scrollTop = logEl.scrollHeight;
-  }
-
-  function openChannels(){ return slots.map(s=>s.dc).filter(dc => dc && dc.readyState==='open'); }
-
-  function refreshGlobalUI(){
-    const anyOpen = openChannels().length > 0;
-    chatText.disabled = !anyOpen;
-    chatSend.disabled = !anyOpen;
-    btnSend.disabled = !anyOpen;
-  }
-
-  btnToggleStun.addEventListener('click', () => {
-    useStun = !useStun;
-    natHelpEl.textContent = `STUN: ${useStun ? 'on' : 'off'}`;
-    _log(`STUN ${useStun ? 'enabled' : 'disabled'} (applies to new connections)`);
-  });
-
-  // ===== Presence & roster =====
-  function sendPresence(dc){
-    const msg = { __meta:'presence', id: myId, name: myName, ts: Date.now() };
-    try{ dc.send(JSON.stringify(msg)); }catch{}
-  }
-  function broadcastPresence(){
-    const json = JSON.stringify({ __meta:'presence', id: myId, name: myName, ts: Date.now() });
-    for (const dc of openChannels()) try{ dc.send(json); }catch{}
-  }
-  function updateRosterTag(id, name, isSelf=false){
-    roster.set(id, {name, lastSeen: Date.now()});
-    // rebuild tags
-    rosterEl.innerHTML = '';
-    for (const [pid, info] of roster.entries()){
-      const tag = document.createElement('span');
-      tag.className = 'tag';
-      tag.textContent = `${info.name}${pid===myId?' (you)':''}`;
-      rosterEl.appendChild(tag);
-    }
-  }
-
-  // ===== Chat =====
-  function addChatBubble(who, name, text, ts=Date.now()){
-    const wrap = document.createElement('div');
-    wrap.className = `bubble ${who === 'me' ? 'me' : 'peer'}`;
-    wrap.innerHTML = `<b>${escapeHtml(name)}</b><br>${escapeHtml(text)}<div class="meta">${new Date(ts).toLocaleTimeString()}</div>`;
-    chatLog.appendChild(wrap);
-    chatLog.scrollTop = chatLog.scrollHeight;
-  }
-  function sendChat(text){
-    if (!text.trim()) return;
-    const msg = { __meta:'chat', id: myId, name: myName, text, ts: Date.now() };
-    const json = JSON.stringify(msg);
-    for (const dc of openChannels()) { try{ dc.send(json); }catch{} }
-    addChatBubble('me', myName, text, msg.ts);
-  }
-  chatSend.addEventListener('click', () => { sendChat(chatText.value); chatText.value=''; });
-  chatText.addEventListener('keydown', (e) => {
-    if (e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(chatText.value); chatText.value=''; }
-  });
-
-  // ===== File transfer (broadcast) =====
-  let receiveBuffer = [];
-  let receivedBytes = 0;
-  let expectedSize = 0;
-  let expectedName = 'file.bin';
-  let expectedType = 'application/octet-stream';
-  let expectedFrom = 'Unknown';
-
-  function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
-
-  async function sendFile(file){
-    const dcs = openChannels();
-    if (dcs.length === 0){ alert('No peers connected.'); return; }
-    // Send metadata first
-    const meta = JSON.stringify({ __meta:'file', name:file.name, size:file.size, type:file.type, from:{id:myId,name:myName} });
-    for (const dc of dcs) { try{ dc.send(meta); }catch{} }
-
-    const chunkSize = 16*1024; // 16 KiB
-    let offset = 0; let lastUpdate = 0;
-    txLabel.textContent = `Sending ${file.name}…`;
-
-    while (offset < file.size){
-      const slice = await file.slice(offset, offset + chunkSize).arrayBuffer();
-      // Backpressure: naive fanout; if any channel buffers too high, wait for it
-      let needWait = false;
-      for (const dc of dcs){ try{ dc.send(slice); if (dc.bufferedAmount > 8*1024*1024) needWait = true; }catch{} }
-      if (needWait){ await Promise.race(dcs.map(dc => new Promise(r => dc.addEventListener('bufferedamountlow', r, {once:true})))); }
-      offset += slice.byteLength;
-      const now = performance.now();
-      if (now - lastUpdate > 50 || offset === file.size){
-        const pct = Math.round((offset / file.size) * 100);
-        txBar.style.width = pct + '%';
-        txLabel.textContent = `Sending ${file.name}… ${pct}%`;
-        lastUpdate = now;
+  <script>
+    // Basic OS hint for the download button
+    (function(){
+      const p = navigator.platform.toLowerCase();
+      const l = document.getElementById('winLink');
+      if(/mac|linux/.test(p)){
+        l.textContent = 'Download for Windows (installer)';
       }
+      document.getElementById('yr').textContent = new Date().getFullYear();
+    })();
+    function copySHA(){
+      const v=document.getElementById('sha').textContent.trim();
+      navigator.clipboard.writeText(v).then(()=>{
+        alert('Checksum copied to clipboard');
+      });
     }
-    txLabel.textContent = `Sent ${file.name} (${file.size.toLocaleString()} bytes) to ${dcs.length} peer(s)`;
-  }
-
-  btnSend.addEventListener('click', () => {
-    const f = fileInput.files && fileInput.files[0];
-    if (!f) { alert('Pick a file first.'); return; }
-    sendFile(f);
-  });
-
-  function addReceivedItem(name, size, linkEl, fromName){
-    if (recvList.firstElementChild && recvList.firstElementChild.classList.contains('muted')){
-      recvList.innerHTML = '';
-    }
-    const row = document.createElement('div');
-    row.className = 'file';
-    const left = document.createElement('div');
-    left.innerHTML = `<b>${escapeHtml(name)}</b><div class="small muted">${(size||0).toLocaleString()} bytes • from ${escapeHtml(fromName||'Unknown')}</div>`;
-    const right = document.createElement('div');
-    right.appendChild(linkEl);
-    row.appendChild(left); row.appendChild(right);
-    recvList.appendChild(row);
-  }
-
-  let rxProgressRow = null;
-  function addOrUpdateRxProgress(pct, reset=false){
-    if (reset){ if (rxProgressRow) rxProgressRow.remove(); rxProgressRow=null; return; }
-    if (!rxProgressRow){
-      rxProgressRow = document.createElement('div');
-      rxProgressRow.className = 'file';
-      rxProgressRow.innerHTML = `<div><b>Receiving…</b><div class="small muted" id="rxPct">0%</div></div>
-      <div style="min-width:200px"><div class="progress"><div class="bar" id="rxBar" style="width:0%"></div></div></div>`;
-      recvList.appendChild(rxProgressRow);
-    }
-    const bar = rxProgressRow.querySelector('#rxBar');
-    const pctEl = rxProgressRow.querySelector('#rxPct');
-    if (bar) bar.style.width = pct + '%';
-    if (pctEl) pctEl.textContent = pct + '%';
-  }
-
-  // ===== Inbound message handler =====
-  function handleInbound(data, dc){
-    if (typeof data === 'string'){
-      try{
-        const msg = JSON.parse(data);
-        if (msg.__meta === 'presence'){
-          updateRosterTag(msg.id, msg.name);
-          // optionally echo our presence back to new peer
-          try{ dc.send(JSON.stringify({__meta:'presence', id:myId, name:myName, ts: Date.now()})); }catch{}
-          return;
-        }
-        if (msg.__meta === 'chat'){
-          updateRosterTag(msg.id, msg.name);
-          addChatBubble('peer', msg.name||'Peer', msg.text||'', msg.ts);
-          return;
-        }
-        if (msg.__meta === 'file'){
-          expectedName = msg.name; expectedType = msg.type || 'application/octet-stream';
-          expectedSize = msg.size >>> 0; expectedFrom = (msg.from && msg.from.name) || 'Peer';
-          receiveBuffer = []; receivedBytes = 0;
-          _log(`Incoming file from ${expectedFrom}: ${expectedName} (${msg.size.toLocaleString()} bytes)`);
-          return;
-        }
-      }catch{
-        // treat as plain chat line
-        addChatBubble('peer', 'Peer', String(data));
-      }
-      return;
-    }
-    // binary chunk
-    receiveBuffer.push(data);
-    receivedBytes += data.byteLength;
-    const pct = expectedSize ? Math.min(100, Math.round((receivedBytes/expectedSize)*100)) : 0;
-    addOrUpdateRxProgress(pct);
-
-    if (expectedSize && receivedBytes >= expectedSize){
-      const blob = new Blob(receiveBuffer, { type: expectedType });
-      receiveBuffer = [];
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = expectedName || 'file.bin'; a.textContent = 'Download';
-      addReceivedItem(expectedName, receivedBytes, a, expectedFrom);
-      addOrUpdateRxProgress(0, true);
-    }
-  }
-
-  // ===== Init =====
-  // Build slots initially
-  slots.forEach(s => s.freshPeer());
-
-  // Backpressure info
-  _log('Backpressure support:', 'bufferedAmountLowThreshold' in RTCDataChannel.prototype ? 'yes' : 'limited');
-})();
-</script>
+  </script>
 </body>
 </html>
