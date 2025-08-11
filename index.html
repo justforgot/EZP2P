@@ -203,27 +203,33 @@
       </div>
     </section>
 
-        <section id="download" class="container">
-      <h2>Open the Browser Build</h2>
-      <p class="sub">No installer needed — run EZ P2P right in your browser.</p>
+            <section id="download" class="container">
+      <h2>Open / Download</h2>
+      <p class="sub">Run EZ P2P right in your browser, or save the HTML locally.</p>
       <div class="download">
         <div class="panel">
-          <a class="btn ghost" id="webLink" href="REPLACE_WITH_GITHUB_RAW_URL" style="display:inline-flex;gap:10px;align-items:center;text-decoration:none">
+          <a class="dl-btn" id="webOpen" href="https://raw.githubusercontent.com/justforgot/EZ-P2P/main/EZP2P.html" style="display:inline-flex;gap:10px;align-items:center;text-decoration:none">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M4 4h16v12H5.5L4 17.5V4zM8 20h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Open browser build (raw HTML)
+            Open browser build
           </a>
-          <div class="tiny" style="margin-top:8px">Use Chrome or Edge for best results.</div>
+          <div style="height:10px"></div>
+          <a class="btn ghost" id="webDownload" href="https://raw.githubusercontent.com/justforgot/EZ-P2P/main/EZP2P.html" download="EZP2P.html" style="display:inline-flex;gap:10px;align-items:center;text-decoration:none">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Download EZP2P.html
+          </a>
+          <div class="tiny" style="margin-top:8px">Tip: Some browsers may still open it in a new tab due to cross‑origin rules. If that happens, press <span class="kbd">Ctrl/⌘+S</span> to save.</div>
+          <div class="tiny" style="margin-top:8px">Best results on Chrome or Edge.</div>
         </div>
         <div class="panel">
           <strong>Heads‑up</strong>
-          <p class="tiny">This build uses WebRTC in your browser. For now, use the manual connect flow in the directions below.</p>
+          <p class="tiny">This build uses WebRTC in your browser. Use the manual connect flow in the directions below.</p>
         </div>
       </div>
     </section>
 
     <section id="directions" class="container">
       <h2>Directions</h2>
-      <p class="sub">Use the desktop app, or follow these steps for the browser build (manual connect). These match the labels in your screenshot. We removed the rename step as you asked.</p>
+      <p class="sub">Follow these steps for the browser build (manual connect). These match the labels in your screenshot. We removed the rename step as you asked.</p>
       <div class="grid">
         <div class="feature">
           <h3>Browser quick start (manual connect)</h3>
@@ -245,14 +251,7 @@
             <li>You can connect up to four devices at once and use the built‑in chat to coordinate transfers.</li>
           </ul>
         </div>
-        <div class="feature">
-          <h3>Windows app</h3>
-          <ol class="tiny">
-            <li>Install the Windows version above.</li>
-            <li>Pick a display name and join/create a room.</li>
-            <li>Drag files in to send; use chat to confirm delivery.</li>
-          </ol>
-        </div>
+        
       </div>
     </section>
 
