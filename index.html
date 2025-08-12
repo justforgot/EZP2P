@@ -101,6 +101,13 @@
       .grid{grid-template-columns:1fr}
       .title{font-size:32px}
     }
+      /* TOS modal */
+    a.tos-link{color:#cfe8ff;text-decoration:underline}
+    dialog#tosDialog{background:var(--panel);color:var(--text);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:0;width:min(92vw,640px)}
+    dialog#tosDialog::backdrop{background:rgba(0,0,0,.6)}
+    .tos-header{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.08);font-weight:700}
+    .tos-body{padding:18px;max-height:55vh;overflow:auto;color:#cfd6f7}
+    .tos-actions{display:flex;justify-content:flex-end;gap:10px;padding:14px 18px;border-top:1px solid rgba(255,255,255,.08)}
   </style>
 </head>
 <body>
@@ -127,6 +134,7 @@
         <a href="#download">Download</a>
         <a href="#directions">Directions</a>
         <a href="#faq">FAQ</a>
+        <a href="#" class="tos-link">TOS</a>
       </nav>
     </div>
   </header>
@@ -219,6 +227,7 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Download EZP2P.html
           </button>
+          <div class="tiny" style="margin-top:8px">By downloading this file you agree to our <a href="#" id="tosLink" class="tos-link">Terms of Service</a>.</div>
         </div>
         <div class="panel">
           <strong>Heads‑up</strong>
@@ -264,12 +273,34 @@
         <p><strong>Safety note</strong><br /><span class="tiny">Don’t connect to people you don’t trust. Whatever you do with this program, be careful who you connect to.</span></p>
       </div>
     </section>
+      <dialog id="tosDialog" aria-label="Terms of Service">
+      <div class="tos-header">Terms of Service</div>
+      <div class="tos-body">
+        <p class="tiny"><strong>Effective:</strong> Aug 2025</p>
+        <ol class="tiny" style="line-height:1.6">
+          <li><strong>What EZ‑P2P is:</strong> a peer‑to‑peer tool that connects devices for direct file transfer and chat. We do not host, store, or monitor your files.</li>
+          <li><strong>Your responsibility:</strong> You control what you share and who you connect to. Only send content you have the rights to share and follow all laws that apply to you.</li>
+          <li><strong>Acceptable use:</strong> No illegal content/activity, malware, harassment, or intellectual‑property infringement. Don’t attempt to disrupt or abuse the service.</li>
+          <li><strong>Privacy & data:</strong> No account or central storage. Transfers are peer‑to‑peer. Your browser/OS may produce routine diagnostics or logs.</li>
+          <li><strong>No warranty:</strong> Provided "as is" and "as available" without warranties of any kind. Use at your own risk.</li>
+          <li><strong>Limitation of liability:</strong> To the maximum extent allowed by law, the creators of EZ‑P2P are not liable for any damages or losses arising from your use, including data loss, unauthorized access, or third‑party claims.</li>
+          <li><strong>Changes:</strong> These terms may be updated over time. Continued use means you accept the changes.</li>
+          <li><strong>Contact:</strong> support@ezp2p.app</li>
+        </ol>
+      </div>
+      <div class="tos-actions">
+        <form method="dialog" style="margin:0">
+          <button class="btn ghost" id="tosClose" value="cancel" type="submit">Close</button>
+          <button class="btn primary" id="tosAgree" value="agree" type="submit">I Agree</button>
+        </form>
+      </div>
+    </dialog>
   </main>
 
   <footer class="container">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
       <div>© <span id="yr"></span> EZ P2P</div>
-      <div class="tiny">Questions? <a style="color:#cfe8ff" href="mailto:support@ezp2p.app">support@ezp2p.app</a></div>
+      <div class="tiny">Questions? <a style="color:#cfe8ff" href="mailto:support@ezp2p.app">support@ezp2p.app</a> • <a href="#" class="tos-link" style="color:#cfe8ff">Terms of Service</a></div>
     </div>
   </footer>
 
@@ -303,6 +334,23 @@
       }
     })();
   </script>
+  <script>
+    (function(){
+      const dlg = document.getElementById('tosDialog');
+      const links = document.querySelectorAll('.tos-link');
+      if(dlg && links.length){
+        links.forEach((lnk)=>{
+          lnk.addEventListener('click', (e)=>{
+            e.preventDefault();
+            if(typeof dlg.showModal === 'function') dlg.showModal();
+            else window.open('#tos', 'tos', 'width=560,height=640');
+          });
+        });
+      }
+    })();
+  </script>
 </body>
+</html>
+
 </html>
 
